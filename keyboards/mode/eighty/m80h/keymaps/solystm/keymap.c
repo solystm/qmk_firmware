@@ -18,7 +18,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include QMK_KEYBOARD_H
 enum layer_names {
     _BASE,
-    _FN1
+    _FN1,
+    _FN2,
+    _VIM2,
+    _VIM1,
+    _VIS1
 };
 
 /* LAYER NOTES
