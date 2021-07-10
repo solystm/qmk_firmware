@@ -41,25 +41,22 @@ enum{
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 	if( record->event.pressed ){
 		switch( keycode ){
-			case MC_TEST:
-				SEND_STRING("Hello World!");
-				return false; break;
-			case MC_DLNE:
+			case MC_DLNE: // Delete an entire line
 				SEND_STRING( SS_TAP( X_HOME )SS_DOWN( X_LSFT )SS_TAP( X_END )SS_UP( X_LSFT )SS_TAP( X_DEL ));
 				return false; break;
-			case MC_CLIP:
+			case MC_CLIP: // Clippings macro
 				SEND_STRING( SS_DOWN( X_LSFT )SS_DOWN( X_LALT )SS_TAP( X_Y )SS_UP( X_LSFT )SS_UP( X_LALT ));
 				return false; break;
-			case MC_WORD:
+			case MC_WORD: // Forward a word (not matching VIM behavior atm)
 				SEND_STRING( SS_DOWN( X_LCTL )SS_TAP( X_RGHT )SS_UP( X_LCTL ));
 				return false; break;
-			case MC_END:
+			case MC_END: // Forward a word
 				SEND_STRING( SS_DOWN( X_LCTL )SS_TAP( X_RGHT )SS_UP( X_LCTL ));
 				return false; break;
-			case MC_BACK:
+			case MC_BACK: // Back a word
 				SEND_STRING( SS_DOWN( X_LCTL )SS_TAP( X_LEFT )SS_UP( X_LCTL ));
 				return false; break;
-			case MC_DLIN:
+			case MC_DLIN: // Delete and return to insert mode
 				SEND_STRING( SS_TAP( X_DEL ));
 				layer_off( _VIM1 );
 				layer_off( _VIM2 );
@@ -95,7 +92,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  */
   [_FN1] = LAYOUT_eighty_m80h(
     TO(_VIM1),_______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,            KC_PSCR, KC_SLCK, KC_PAUS,
-    MC_TEST,  _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,                     _______, _______, _______,
+    _______,  _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,                     _______, _______, _______,
     _______,  _______, _______, _______, _______, _______, _______, MC_DLNE, _______, _______, _______, _______, _______, _______,            _______, _______, _______,
     KC_CAPS,  _______, MC_CLIP, _______, _______, _______, KC_LEFT, KC_DOWN, KC_UP,   KC_RGHT, _______, _______, _______,
     MO(_FN2), _______, _______, _______, _______, _______, KC_HOME, KC_END,  _______, _______, _______, _______,                                       _______,
