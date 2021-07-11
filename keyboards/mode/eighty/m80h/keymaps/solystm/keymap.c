@@ -391,6 +391,21 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 			}
 			return false;
 		case VIM_S:
+			if( record->event.pressed ){
+				if( vim_control ){
+					// C-s: XOFF... whatever this is, probably not getting implemented
+				}else if( vim_shift ){
+					// S: Substitute entire line
+					SEND_STRING( SS_TAP( X_HOME )SS_DOWN( X_LSFT )SS_TAP( X_END )SS_UP( X_LSFT )SS_TAP( X_DEL ));
+					layer_clear();
+					layer_on( _BAS );
+				}else{
+					// s: Substitute single character
+					SEND_STRING( SS_TAP( X_DEL ));
+					layer_clear();
+					layer_on( _BAS );
+				}
+			}
 			return false;
 		/* Unimplemented
 		case VIM_T:
