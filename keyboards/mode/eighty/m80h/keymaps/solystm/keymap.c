@@ -16,7 +16,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include QMK_KEYBOARD_H
 enum layer_names {
-    _BASE,
+    _BAS,
     _FN1,
     _FN2,
     _VIM1,
@@ -28,45 +28,101 @@ enum layer_names {
  * Defining macros here, to be used below in the keymap...
  */
 enum{
-	MC_TEST = SAFE_RANGE, // Test macro!
-	MC_DLNE, // Delete line
-	// In VIM mode:
-	MC_WORD, // Move to the next word (Currently not really this behavior, it's more like "end" below)
-	MC_WEND, // Move to the end of the word
-	MC_BACK, // Move back a word
-	MC_DLIN, // Delete, then insert
-	MC_VMES, // Escape key macro, esc on tap or VIM mode when held
+	MC_VMES = SAFE_RANGE, // Escape key macro, esc on tap or VIM mode when held
+	MC_DLNE,
+	/* VIM keybindings
+	 * All the rest of the key bindings deal with VIM mode.
+	 */
+	V_SHFT, // VIM shift mode
+	V_CTRL, // VIM control mode
+	V_SPACE, // I think this is just right-arrow?
+	VIM_A, // a: Enter insert after current character
+	       // A (capital): Insert at end of line
+	VIM_B, // b: Back a word
+	       // C-b: Page up
+	VIM_C, // c: Change command
+	       // C: Change to end of line
+	VIM_D, // d: Delete command
+	       // D: Delete to end of line
+	       // C-d: Page down
+	VIM_E, // e: End of word
+	       // C-e: Scroll text down... not implemented, not really supportable through key commands
+	VIM_F, // f: Find character after cursor... may not implement this
+	       // F: Find backwards... may not implement this
+	       // C-f: Page down
+	VIM_G, // g: unbound
+	       // G: Go to line number... may not implement this, but theoretically i should be able to?
+	       // gg: move to start of document
+	       // GG: move to end of document
+	       // C-g: Show status, cannot implement
+	VIM_H, // h: Move left
+	       // H: Move to top line of screen (maybe page up)
+	       // C-h: Backspace
+	VIM_I, // i: Insert before current character
+	       // I: Insert at start of row
+	       // C-i: Tab... not implemented as it only works in insert mode
+	VIM_J, // j: Move down
+	       // J: Join current and next lines
+	       // C-j: Move down
+	VIM_K, // k: Move up
+	       // K: Unbound
+	       // C-k: Unbound... may make it move up?
+	VIM_L, // l: Move right
+	       // L: Move to bottom line of screen (maybe page down)
+	       // C-l: Refresh screen... no need to implement
+	VIM_M, // m: Mark curent line... not sure if we're using this...
+	       // M: Move to middle of screen... may not implement this
+	       // C-m: Move to first non-whitespace of next line, CR in insert mode
+	VIM_N, // n: Repeat last search
+	       // N: Repeat last search but in opposite direction... may not implement
+	       // C-n: Move down one line
+	VIM_O, // o: Open line below and enter insert
+	       // O: Open line above and enter insert
+	VIM_P, // p: Paste
+	       // P: Paste before cursor
+	       // C-p: Move up one line
+	VIM_Q, // q: unbound
+	       // Q: Leave visual mode and enter ex mode... may not implement
+	       // C-q: XON
+	VIM_R, // r: Replace single character
+	       // R: Replace to end of line, then insert
+	       // C-r: Redo
+	VIM_S, // s: Substitute single character
+	       // S: Substitute entire line
+	       // C-s: XOFF
+	// VIM_T, // t: Same as F but cursor moves to just before the found character... may not implement this
+	       // T: Backwards t... may not implement this
+	       // C-t: move back a tag jump... probably won't implement
+	VIM_U, // u: Undo
+	       // U: Restores line to state when cursor was moved into it... may not implement this
+	       // C-u: Page up
+	VIM_V, // v: Enter visual mode
+	       // V: Enter visual mode and highlight whole line (Need to be careful so it doesn't get glitchy)
+	       // C-v: Visual block mode... probably won't implement
+	VIM_W, // w: Move forward one word
+	VIM_X, // x: Delete a single character
+	       // X: Delete single character backwards
+	VIM_Y, // y: Yank command
+	       // Y, yy: Yank entire line
+	       // C-y: Scroll text up, not implemented, not really supportable through key commands
+	// VIM_Z, // z: Position current line... may not implement
+	       // ZZ: Quick save and exit... may not implement
+	       // C-z: Suspend program... may not implement
+	// VIM_1, VIM_2, VIM_3, VIM_4, VIM_5, VIM_6, VIM_7, VIM_8, VIM_9, VIM_0, // Precursor/multiplier commands... may not implement
+
 };
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 	// Note: this layout is slightly less space efficient (or so it seems) than putting the "if( record-> event.pressed )" up front.
 	// However, when handling macros processes that need to interact with both on key press and on key release, it's easier to understand like this.
 	static uint16_t vim_esc_keypress;
+	static bool change_mode; // Used with the "c" key
+	static bool del_mode; // Used with the "d" key
+	static bool vim_shift; // Shift key while in VIM mode
+	static bool vim_control; // Control key while in VIM mode
 	switch( keycode ){
 		case MC_DLNE: // Delete an entire line
 			if( record->event.pressed ){
 				SEND_STRING( SS_TAP( X_HOME )SS_DOWN( X_LSFT )SS_TAP( X_END )SS_UP( X_LSFT )SS_TAP( X_DEL ));
-			}
-			return false;
-		case MC_WORD: // Forward a word (not matching VIM behavior atm)
-			if( record->event.pressed ){
-				SEND_STRING( SS_DOWN( X_LCTL )SS_TAP( X_RGHT )SS_UP( X_LCTL ));
-			}
-			return false;
-		case MC_WEND: // Forward a word
-			if( record->event.pressed ){
-				SEND_STRING( SS_DOWN( X_LCTL )SS_TAP( X_RGHT )SS_UP( X_LCTL ));
-			}
-			return false;
-		case MC_BACK: // Back a word
-			if( record->event.pressed ){
-				SEND_STRING( SS_DOWN( X_LCTL )SS_TAP( X_LEFT )SS_UP( X_LCTL ));
-			}
-			return false;
-		case MC_DLIN: // Delete and return to insert mode
-			if( record->event.pressed ){
-				SEND_STRING( SS_TAP( X_DEL ));
-				layer_off( _VIM1 );layer_off( _VIM2 );layer_off( _VIS1 );
-				layer_on( _BASE );
 			}
 			return false;
 		case MC_VMES: // Escape when tapped, enter VIM mode when held
@@ -76,11 +132,257 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 			}else{ // Release
 				unregister_code( KC_ESC );
 				if( timer_elapsed( vim_esc_keypress )> TAPPING_TERM ){
-					layer_off( _BASE );layer_off( _FN1 );layer_off( _FN2 );
+					clear_keyboard(); // Clear all keys from being pressed
+					layer_clear();
 					layer_on( _VIM1 );
 				}
 			}
 			return false; // We handled this keypress
+		case V_SHFT: // Shift key pressed...
+			if( record->event.pressed ){
+				vim_shift = true;
+			}else{
+				vim_shift = false;
+			}
+			return false;
+		case V_CTRL: // Shift key pressed...
+			if( record->event.pressed ){
+				vim_control = true;
+			}else{
+				vim_control = false;
+			}
+			return false;
+		case VIM_A:
+			// a: Insert after character
+			// A: Insert at end of line
+			return false;
+		case VIM_B:
+			if( record->event.pressed ){
+				if( vim_control ){
+					// Page up
+					register_code( KC_PGUP );
+				}else{
+					if( del_mode ){
+						SEND_STRING( SS_LSFT( SS_TAP( X_LEFT ))SS_TAP( X_DEL ));
+						del_mode = false;
+					}else if( change_mode ){
+						SEND_STRING( SS_LSFT( SS_TAP( X_LEFT ))SS_TAP( X_DEL ));
+						layer_clear();
+						layer_on( _BAS );
+						change_mode = false;
+					}else{
+						// b: Back a word
+						register_code( KC_LCTL );
+						register_code( KC_LEFT );
+					}
+				}
+			}else{
+				clear_keyboard();
+			}
+			return false;
+		case VIM_C:
+			if( record->event.pressed ){
+				if( vim_shift ){
+					// C: Change to end of line
+					SEND_STRING( SS_LSFT( SS_TAP( X_END ))SS_TAP( X_DEL ));
+					layer_clear();
+					layer_on( _BAS );
+				}else{
+					// c: Enter change command
+					change_mode = true;
+				}
+			}
+			return false;
+		case VIM_D:
+			if( record->event.pressed ){
+				if( vim_control ){
+					// C-d: Page down
+					register_code( KC_PGDN );
+				}else if( vim_shift ){
+					// D: Delete backwards (backspace)
+					register_code( KC_BSPC );
+				}else{
+					// d: Enter delete mode
+					if( del_mode ){
+						// Blow up this line
+						SEND_STRING( SS_TAP( X_HOME )SS_LSFT( SS_TAP( X_END ))SS_TAP( X_DEL ));
+						del_mode = false;
+					}else{
+						del_mode = true;
+					}
+				}
+			}else{
+				unregister_code( KC_PGDN );
+				unregister_code( KC_BSPC );
+			}
+		case VIM_E:
+			if( record->event.pressed ){
+				if( vim_control ){
+					// C-e: Scroll down... not implemented
+				}else{
+					if( del_mode ){
+						SEND_STRING( SS_LSFT( SS_TAP( X_RGHT ))SS_TAP( X_DEL ));
+						del_mode = false;
+					}else if( change_mode ){
+						SEND_STRING( SS_LSFT( SS_TAP( X_RGHT ))SS_TAP( X_DEL ));
+						layer_clear();
+						layer_on( _BAS );
+						change_mode = false;
+					}else{
+						// e: Forward a word
+						register_code( KC_LCTL );
+						register_code( KC_RGHT );
+					}
+				}
+			}else{
+				clear_keyboard();
+			}
+			return false;
+		/* Left unbound...
+		case VIM_F:
+			return false;
+		*/
+		case VIM_G:
+			return false;
+		case VIM_H:
+			if( record->event.pressed ){
+				if( change_mode ){
+					// Delete one character to the left, then insert 
+					SEND_STRING( SS_TAP( X_BSPC ));
+					layer_clear();
+					layer_on( _BAS );
+					change_mode = false;
+				}else if( del_mode ){
+					// Delete one character to the left
+					SEND_STRING( SS_TAP( X_BSPC ));
+					del_mode = false;
+				}else{
+					register_code( KC_LEFT );
+				}
+			}else{
+				unregister_code( KC_LEFT );
+			}
+			return false;
+		case VIM_I:
+			return false;
+		case VIM_J:
+			if( record->event.pressed ){
+				if( change_mode ){
+					// Delete current line and the next, then insert 
+					SEND_STRING( SS_TAP( X_HOME )SS_LSFT( SS_TAP( X_DOWN )SS_TAP( X_END ))SS_TAP( X_DEL ));
+					layer_clear();
+					layer_on( _BAS );
+					change_mode = false;
+				}else if( del_mode ){
+					// Delete current line and the next
+					SEND_STRING( SS_TAP( X_HOME )SS_LSFT( SS_TAP( X_DOWN )SS_TAP( X_END ))SS_TAP( X_DEL ));
+					del_mode = false;
+				}else{
+					register_code( KC_DOWN );
+				}
+			}else{
+				unregister_code( KC_DOWN );
+			}
+			return false;
+		case VIM_K:
+			if( record->event.pressed ){
+				if( change_mode ){
+					// Delete current line and the previous, then insert
+					SEND_STRING( SS_TAP( X_END )SS_LSFT( SS_TAP( X_UP )SS_TAP( X_HOME ))SS_TAP( X_DEL ));
+					layer_clear();
+					layer_on( _BAS );
+					change_mode = false;
+				}else if( del_mode ){
+					// Delete current line and the previous
+					SEND_STRING( SS_TAP( X_END )SS_LSFT( SS_TAP( X_UP )SS_TAP( X_HOME ))SS_TAP( X_DEL ));
+					del_mode = false;
+				}else{
+					register_code( KC_UP );
+				}
+			}else{
+				unregister_code( KC_UP );
+			}
+			return false;
+		case VIM_L:
+			if( record->event.pressed ){
+				if( change_mode ){
+					// Delete one character to the right, then insert 
+					SEND_STRING( SS_TAP( X_DEL ));
+					layer_clear();
+					layer_on( _BAS );
+					change_mode = false;
+				}else if( del_mode ){
+					// Delete one character to the right
+					SEND_STRING( SS_TAP( X_DEL ));
+					del_mode = false;
+				}else{
+					register_code( KC_RGHT );
+				}
+			}else{
+				unregister_code( KC_RGHT );
+			}
+			return false;
+		case VIM_M:
+			return false;
+		case VIM_N:
+			return false;
+		case VIM_O:
+			return false;
+		case VIM_P:
+			return false;
+		case VIM_Q:
+			return false;
+		case VIM_R:
+			if( record->event.pressed ){
+				if( vim_control ){
+					// C-r: Redo... or at least make an attempt at it
+					SEND_STRING( SS_LCTL( SS_TAP( X_Y )));
+				}else{
+					// r: Replace single character... not sure this is getting implemented, though.
+				}
+			}
+			return false;
+		case VIM_S:
+			return false;
+		/* Unimplemented
+		case VIM_T:
+			return false;
+		*/
+		case VIM_U:
+			if( record->event.pressed ){
+				// u: Undo
+				SEND_STRING( SS_LCTL( SS_TAP( X_Z )));
+			}
+			return false;
+		case VIM_V:
+			return false;
+		case VIM_W:
+			if( record->event.pressed ){
+				if( del_mode ){
+					SEND_STRING( SS_LSFT( SS_TAP( X_RGHT ))SS_TAP( X_DEL ));
+					del_mode = false;
+				}else if( change_mode ){
+					SEND_STRING( SS_LSFT( SS_TAP( X_RGHT ))SS_TAP( X_DEL ));
+					layer_clear();
+					layer_on( _BAS );
+					change_mode = false;
+				}else{
+					// w: Forward a word
+					register_code( KC_LCTL );
+					register_code( KC_RGHT );
+				}
+			}else{
+				clear_keyboard();
+			}
+			return false;
+		case VIM_X:
+			return false;
+		case VIM_Y:
+			return false;
+		/* Unimplemented
+		case VIM_Z:
+			return false;
+		*/
 		default:
 			return true; // Process all other keycodes normally
 	}
@@ -97,7 +399,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  * Notes: Basically a standard layout, but with some additional mode swaps: escape sends to "VIM mode", left control sends to FN1, and caps is control.
  * LT( _VIM1, KC_ESC) -- tap for escape, but hold to go into VIM mode. Should make that easier to get into.
  */
-  [_BASE] = LAYOUT_eighty_m80h(
+  [_BAS] = LAYOUT_eighty_m80h(
     MC_VMES, KC_F1,   KC_F2,   KC_F3,   KC_F4,   KC_F5,   KC_F6,   KC_F7,   KC_F8,   KC_F9,   KC_F10,   KC_F11,     KC_F12,     KC_BSPC,    KC_MUTE, KC_VOLD, KC_VOLU,
     KC_GRV,  KC_1,    KC_2,    KC_3,    KC_4,    KC_5,    KC_6,    KC_7,    KC_8,    KC_9,    KC_0,     KC_MINS,    KC_EQL,                 KC_INS,  KC_HOME, KC_PGUP,
     KC_TAB,  KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,    KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,     KC_LBRC,    KC_RBRC,    KC_BSLS,    KC_DEL,  KC_END,  KC_PGDN,
@@ -131,18 +433,18 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  * Base level VIM mode, all the usual goodness
  */
   [_VIM1] = LAYOUT_eighty_m80h(
-    TO(_BASE),XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,  XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,            XXXXXXX, XXXXXXX, XXXXXXX,
-    XXXXXXX,  XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,  XXXXXXX, KC_COPY, XXXXXXX, XXXXXXX, XXXXXXX, KC_PSTE, XXXXXXX, XXXXXXX,                     XXXXXXX, XXXXXXX, XXXXXXX,
-    XXXXXXX,  XXXXXXX, MC_WEND,  MC_WEND, XXXXXXX,  XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,            XXXXXXX, XXXXXXX, XXXXXXX,
-    XXXXXXX,  XXXXXXX, MC_DLIN, XXXXXXX, XXXXXXX,  XXXXXXX, KC_LEFT, KC_DOWN, KC_UP,   KC_RGHT, XXXXXXX, XXXXXXX, XXXXXXX,
-    MO(_VIM2),XXXXXXX, KC_DEL,  XXXXXXX, TO(_VIS1),MC_BACK, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                                       XXXXXXX,
-    XXXXXXX,  XXXXXXX, XXXXXXX,                    XXXXXXX,                   XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                              XXXXXXX, XXXXXXX, XXXXXXX),
+    TO(_BAS),XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,            KC_PSCR, KC_SLCK, KC_PAUS,
+    XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                     KC_INS,  KC_HOME, KC_PGUP,
+    XXXXXXX, VIM_Q,   VIM_W,   VIM_E,   VIM_R,   XXXXXXX, VIM_Y,   VIM_U,   VIM_I,   VIM_O,   VIM_P,   XXXXXXX, XXXXXXX, XXXXXXX,            KC_DEL,  KC_END,  KC_PGDN,
+    V_CTRL,  VIM_A,   VIM_S,   VIM_D,   XXXXXXX, VIM_G,   VIM_H,   VIM_J,   VIM_K,   VIM_L,   XXXXXXX, XXXXXXX, XXXXXXX,
+    V_SHFT,  XXXXXXX, VIM_X,   VIM_C,   VIM_V,   VIM_B,   XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                                       KC_UP,
+    XXXXXXX, XXXXXXX, XXXXXXX,                   V_SPACE,                   XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                              KC_LEFT, KC_DOWN, KC_RGHT),
 
 /* VIM layer 2, shift-mod
  * VIM mode, but for the capital letter inputs
  */
   [_VIM2] = LAYOUT_eighty_m80h(
-    TO(_BASE),_______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,            _______, _______, _______,
+    TO(_BAS), _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,            _______, _______, _______,
     _______,  _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,                     _______, _______, _______,
     _______,  _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,            _______, _______, _______,
     _______,  _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,
@@ -153,11 +455,11 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  * VIM visual mode, select mode.
  */
   [_VIS1] = LAYOUT_eighty_m80h(
-    TO(_VIM1),_______, _______, _______, _______,  _______, _______, _______, _______, _______, _______, _______, _______, _______,            _______, _______, _______,
-    _______,  _______, _______, _______, _______,  _______, _______, _______, _______, _______, _______, _______, _______,                     _______, _______, _______,
-    _______,  _______, _______, _______, _______,  _______, _______, _______, _______, _______, _______, _______, _______, _______,            _______, _______, _______,
-    _______,  _______, _______, KC_CUT,  _______,  _______, _______, _______, _______, _______, _______, _______, _______,
-    _______,  _______, KC_CUT,  _______, TO(_VIM1),_______, _______, _______, _______, _______, _______, _______,                                       _______,
-    _______,  _______, _______,                    _______,                   _______, _______, _______, _______,                              _______, _______, _______),
+    TO(_VIM1),_______, _______,     _______,     _______,  _______, _______,    _______,    _______,  _______, _______, _______, _______, _______,            _______, _______, _______,
+    _______,  _______, _______,     _______,     _______,  _______, _______,    _______,    _______,  _______, _______, _______, _______,                     _______, _______, _______,
+    _______,  _______, RCS(KC_RGHT),RCS(KC_RGHT),_______,  _______, _______,    _______,    _______,  _______, _______, _______, _______, _______,            _______, _______, _______,
+    _______,  _______, VIM_S,       KC_CUT,      _______,  _______, S(KC_LEFT), S(KC_DOWN), S(KC_UP), S(KC_RGHT), _______, _______, _______,
+    _______,  _______, KC_CUT,      _______,     TO(_VIM1),_______, _______,    _______,    _______,  _______, _______, _______,                                       _______,
+    _______,  _______, _______,                            _______,                         _______,  _______, _______, _______,                              _______, _______, _______),
 
 };

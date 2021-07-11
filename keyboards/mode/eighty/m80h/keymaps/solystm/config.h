@@ -108,5 +108,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 /* Control tapping behavior */
 
-#define TAPPING_TERM 200 // default 200
+#define TAPPING_TERM 333 // default 200
 #define PERMISSIVE_HOLD
