@@ -79,7 +79,7 @@ enum{
 	VIM_O, // o: Open line below and enter insert
 	       // O: Open line above and enter insert
 	VIM_P, // p: Paste
-	       // P: Paste before cursor
+	       // P: Paste before cursor, not sure how to really implement this...
 	       // C-p: Move up one line
 	VIM_Q, // q: unbound
 	       // Q: Leave visual mode and enter ex mode... may not implement
@@ -112,11 +112,11 @@ enum{
 
 };
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-	// Note: this layout is slightly less space efficient (or so it seems) than putting the "if( record-> event.pressed )" up front.
-	// However, when handling macros processes that need to interact with both on key press and on key release, it's easier to understand like this.
+	static bool nasty_hacks = true; // Enable some more optimistic behavior
 	static uint16_t vim_esc_keypress;
 	static bool change_mode; // Used with the "c" key
 	static bool del_mode; // Used with the "d" key
+	static bool visual_mode; // While in visual mode
 	static bool vim_shift; // Shift key while in VIM mode
 	static bool vim_control; // Control key while in VIM mode
 	switch( keycode ){
@@ -153,8 +153,19 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 			}
 			return false;
 		case VIM_A:
-			// a: Insert after character
-			// A: Insert at end of line
+			if( record->event.pressed ){
+				if( vim_shift ){
+					// A: Insert at end of line
+					SEND_STRING( SS_TAP( X_END ));
+					layer_clear();
+					layer_on( _BAS );
+				}else{
+					// a: Insert after character
+					SEND_STRING( SS_TAP( X_RGHT ));
+					layer_clear();
+					layer_on( _BAS );
+				}
+			}
 			return false;
 		case VIM_B:
 			if( record->event.pressed ){
@@ -170,6 +181,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 						layer_clear();
 						layer_on( _BAS );
 						change_mode = false;
+					}else if( visual_mode ){
+						register_code( KC_LCTL );
+						register_code( KC_LSFT );
+						register_code( KC_LEFT );
 					}else{
 						// b: Back a word
 						register_code( KC_LCTL );
@@ -187,6 +202,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					SEND_STRING( SS_LSFT( SS_TAP( X_END ))SS_TAP( X_DEL ));
 					layer_clear();
 					layer_on( _BAS );
+				}else if( visual_mode ){
+					// V-c: Delete and enter insert
+					SEND_STRING( SS_TAP( X_DEL ));
+					layer_clear();
+					layer_on( _BAS );
+					visual_mode = false;
 				}else{
 					// c: Enter change command
 					change_mode = true;
@@ -238,11 +259,26 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 				clear_keyboard();
 			}
 			return false;
-		/* Left unbound...
 		case VIM_F:
+			// f: Find character after cursor... may not implement this
+			// F: Find backwards... may not implement this
+			if( record->event.pressed ){
+				if( vim_control ){
+					// C-f: Page down
+					register_code( KC_PGDN );
+				}
+			}else{
+				clear_keyboard();
+			}
+
 			return false;
-		*/
 		case VIM_G:
+			// g: unbound
+			// G: Go to line number... may not implement this, but theoretically i should be able to?
+			// move to start of document
+			// GG: move to end of document
+			// C-g: Show status, cannot implement
+
 			return false;
 		case VIM_H:
 			if( record->event.pressed ){
@@ -264,6 +300,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 			}
 			return false;
 		case VIM_I:
+			if( record->event.pressed ){
+				if( vim_shift ){
+					// I: Insert at start of line
+					SEND_STRING( SS_TAP( X_HOME ));
+					layer_clear();
+					layer_on( _BAS );
+				}else{
+					// i: Insert at character
+					layer_clear();
+					layer_on( _BAS );
+				}
+			}
 			return false;
 		case VIM_J:
 			if( record->event.pressed ){
@@ -355,6 +403,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 			}
 			return false;
 		case VIM_V:
+			if( record->event.pressed ){
+				// Toggle visual mode
+				if( visual_mode ){
+					// Would be great to deselect things in here somehow... gonna try a nasty hack
+					if( nasty_hacks ){
+						SEND_STRING( SS_TAP( X_LEFT )SS_TAP( X_RGHT ));
+					}
+					visual_mode = false;
+				}else{
+					visual_mode = true;
+				}
+			}
 			return false;
 		case VIM_W:
 			if( record->event.pressed ){
@@ -436,9 +496,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     TO(_BAS),XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,            KC_PSCR, KC_SLCK, KC_PAUS,
     XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                     KC_INS,  KC_HOME, KC_PGUP,
     XXXXXXX, VIM_Q,   VIM_W,   VIM_E,   VIM_R,   XXXXXXX, VIM_Y,   VIM_U,   VIM_I,   VIM_O,   VIM_P,   XXXXXXX, XXXXXXX, XXXXXXX,            KC_DEL,  KC_END,  KC_PGDN,
-    V_CTRL,  VIM_A,   VIM_S,   VIM_D,   XXXXXXX, VIM_G,   VIM_H,   VIM_J,   VIM_K,   VIM_L,   XXXXXXX, XXXXXXX, XXXXXXX,
-    V_SHFT,  XXXXXXX, VIM_X,   VIM_C,   VIM_V,   VIM_B,   XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                                       KC_UP,
-    XXXXXXX, XXXXXXX, XXXXXXX,                   V_SPACE,                   XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                              KC_LEFT, KC_DOWN, KC_RGHT),
+    V_CTRL,  VIM_A,   VIM_S,   VIM_D,   VIM_F,   VIM_G,   VIM_H,   VIM_J,   VIM_K,   VIM_L,   XXXXXXX, XXXXXXX, XXXXXXX,
+    V_SHFT,  XXXXXXX, VIM_X,   VIM_C,   VIM_V,   VIM_B,   VIM_N,   VIM_M,   XXXXXXX, XXXXXXX, XXXXXXX,          V_SHFT,                               KC_UP,
+    XXXXXXX, XXXXXXX, XXXXXXX,                   V_SPACE,                                     XXXXXXX, XXXXXXX, XXXXXXX, V_CTRL,             KC_LEFT, KC_DOWN, KC_RGHT),
 
 /* VIM layer 2, shift-mod
  * VIM mode, but for the capital letter inputs
