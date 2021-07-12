@@ -253,12 +253,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 				if( vim_control ){
 					// C-d: Page down
 					register_code( KC_PGDN );
+				}else if( visual_mode) {
+					// V-d: Delete selection
+					SEND_STRING( SS_TAP( X_DEL ));
+					visual_mode = false;
 				}else if( vim_shift ){
 					// D: Delete backwards (backspace)
 					register_code( KC_BSPC );
-				}else if( visual_mode) {
-					SEND_STRING( SS_TAP( X_DEL ));
-					visual_mode = false;
 				}else{
 					// d: Enter delete mode
 					if( del_mode ){
@@ -538,10 +539,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 				if( vim_shift ){
 					// X: Delete previous character
 					register_code( KC_BSPC );
+					visual_mode = false;
 				}else{
 					// x: Delete single character
 					// Same for visual mode
 					register_code( KC_DEL );
+					visual_mode = false;
 				}
 			}else{
 				clear_keyboard();
