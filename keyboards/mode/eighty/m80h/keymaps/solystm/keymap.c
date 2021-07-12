@@ -20,8 +20,6 @@ enum layer_names {
     _FN1,
     _FN2,
     _VIM1,
-    _VIM2,
-    _VIS1
 };
 
 /* Macro section
@@ -31,6 +29,7 @@ enum{
 	MC_VMES = SAFE_RANGE, // Escape key macro, esc on tap or VIM mode when held
 	MC_VMESC, // Escape key to leave VIM mode
 	MC_DLNE,
+	MC_DWRD,
 	/* VIM keybindings
 	 * All the rest of the key bindings deal with VIM mode.
 	 */
@@ -144,23 +143,29 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 			}
 			return false; // We handled this keypress
 		case MC_VMESC: // Escape from inside VIM mode
-			if( visual_mode ){
-				visual_mode = false;
-				if( nasty_hacks ){ // Try to cancel the selection
-					SEND_STRING( SS_TAP( X_LEFT )SS_TAP( X_RGHT ));
+			if( record->event.pressed ){
+				if( visual_mode ){
+					visual_mode = false;
+					if( nasty_hacks ){ // Try to cancel the selection
+						SEND_STRING( SS_TAP( X_LEFT )SS_TAP( X_RGHT ));
+					}
+				}else if( change_mode || del_mode || yank_mode ){
+					// Just get rid of all these.
+					change_mode = false;
+					del_mode = false;
+					yank_mode = false;
+				}else{
+					// Nothing else going on, go back to normal mode.
+					layer_clear();
+					layer_on( _BAS );
 				}
-			}else if( change_mode || del_mode || yank_mode ){
-				// Just get rid of all these.
-				change_mode = false;
-				del_mode = false;
-				yank_mode = false;
+				clear_keyboard();
 			}
-			}else{
-				// Nothing else going on, go back to normal mode.
-				layer_clear();
-				layer_on( _BAS );
+			return false;
+		case MC_DWRD: // Delete word (emulating VIM C-w)
+			if( record->event.pressed ){
+				SEND_STRING( SS_LSFT( SS_TAP( X_RGHT ))SS_TAP( X_DEL ));
 			}
-			clear_keyboard();
 			return false;
 			/* VIM MODE
 			 * Below this is the VIM input handling code.
@@ -487,13 +492,22 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 		case VIM_V:
 			if( record->event.pressed ){
 				// Toggle visual mode
+				// The behavior is a little different (particularly the V behavior) because we can't really copy VIM 1:1 here
 				if( visual_mode ){
-					// Would be great to deselect things in here somehow... gonna try a nasty hack
-					if( nasty_hacks ){
-						SEND_STRING( SS_TAP( X_LEFT )SS_TAP( X_RGHT ));
+					if( vim_shift ){
+						// This behavior 
+					}else{
+						// Would be great to deselect things in here somehow... gonna try a nasty hack
+						if( nasty_hacks ){
+							SEND_STRING( SS_TAP( X_LEFT )SS_TAP( X_RGHT ));
+						}
+						visual_mode = false;
 					}
-					visual_mode = false;
 				}else{
+					if( vim_shift ){
+						// Select whole line
+						SEND_STRING( SS_TAP( X_HOME )SS_LSFT( SS_TAP( X_END )));
+					}
 					visual_mode = true;
 				}
 			}
@@ -523,11 +537,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 			if( record->event.pressed ){
 				if( vim_shift ){
 					// X: Delete previous character
-					register_code( X_BSPC );
+					register_code( KC_BSPC );
 				}else{
 					// x: Delete single character
 					// Same for visual mode
-					register_code( X_DEL );
+					register_code( KC_DEL );
 				}
 			}else{
 				clear_keyboard();
