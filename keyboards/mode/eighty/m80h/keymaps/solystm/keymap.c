@@ -29,6 +29,7 @@ enum layer_names {
  */
 enum{
 	MC_VMES = SAFE_RANGE, // Escape key macro, esc on tap or VIM mode when held
+	MC_VMESC, // Escape key to leave VIM mode
 	MC_DLNE,
 	/* VIM keybindings
 	 * All the rest of the key bindings deal with VIM mode.
@@ -117,6 +118,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 	static bool change_mode; // Used with the "c" key
 	static bool del_mode; // Used with the "d" key
 	static bool visual_mode; // While in visual mode
+	static bool yank_mode; // Used with "y" key
 	static bool vim_shift; // Shift key while in VIM mode
 	static bool vim_control; // Control key while in VIM mode
 	switch( keycode ){
@@ -127,17 +129,44 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 			return false;
 		case MC_VMES: // Escape when tapped, enter VIM mode when held
 			if( record->event.pressed ){ // Press
-				vim_esc_keypress = timer_read();
 				register_code( KC_ESC );
+				vim_esc_keypress = timer_read();
 			}else{ // Release
 				unregister_code( KC_ESC );
 				if( timer_elapsed( vim_esc_keypress )> TAPPING_TERM ){
 					clear_keyboard(); // Clear all keys from being pressed
 					layer_clear();
 					layer_on( _VIM1 );
+					if( nasty_hacks ){ // Try to cancel selections
+						SEND_STRING( SS_TAP( X_LEFT )SS_TAP( X_RGHT ));
+					}
 				}
 			}
 			return false; // We handled this keypress
+		case MC_VMESC: // Escape from inside VIM mode
+			if( visual_mode ){
+				visual_mode = false;
+				if( nasty_hacks ){ // Try to cancel the selection
+					SEND_STRING( SS_TAP( X_LEFT )SS_TAP( X_RGHT ));
+				}
+			}else if( change_mode || del_mode || yank_mode ){
+				// Just get rid of all these.
+				change_mode = false;
+				del_mode = false;
+				yank_mode = false;
+			}
+			}else{
+				// Nothing else going on, go back to normal mode.
+				layer_clear();
+				layer_on( _BAS );
+			}
+			clear_keyboard();
+			return false;
+			/* VIM MODE
+			 * Below this is the VIM input handling code.
+			 * It's kinda taking over some of the keyboard input/layer handling, so it's a little complicated.
+			 * I'd like to refactor this to use functions and stuff but uh... not sure how best to do that in the QMK framework.
+			 */
 		case V_SHFT: // Shift key pressed...
 			if( record->event.pressed ){
 				vim_shift = true;
@@ -222,6 +251,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 				}else if( vim_shift ){
 					// D: Delete backwards (backspace)
 					register_code( KC_BSPC );
+				}else if( visual_mode) {
+					SEND_STRING( SS_TAP( X_DEL ));
+					visual_mode = false;
 				}else{
 					// d: Enter delete mode
 					if( del_mode ){
@@ -233,8 +265,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					}
 				}
 			}else{
-				unregister_code( KC_PGDN );
-				unregister_code( KC_BSPC );
+				clear_keyboard();
+				// unregister_code( KC_PGDN );
+				// unregister_code( KC_BSPC );
 			}
 		case VIM_E:
 			if( record->event.pressed ){
@@ -250,6 +283,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 						layer_on( _BAS );
 						change_mode = false;
 					}else{
+						if( visual_mode ){
+							register_code( KC_LSFT );
+						}
 						// e: Forward a word
 						register_code( KC_LCTL );
 						register_code( KC_RGHT );
@@ -293,10 +329,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					SEND_STRING( SS_TAP( X_BSPC ));
 					del_mode = false;
 				}else{
+					if( visual_mode ){
+						register_code( KC_LSFT );
+					}
 					register_code( KC_LEFT );
 				}
 			}else{
-				unregister_code( KC_LEFT );
+				clear_keyboard();
+				//unregister_code( KC_LEFT );
 			}
 			return false;
 		case VIM_I:
@@ -326,10 +366,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					SEND_STRING( SS_TAP( X_HOME )SS_LSFT( SS_TAP( X_DOWN )SS_TAP( X_END ))SS_TAP( X_DEL ));
 					del_mode = false;
 				}else{
+					if( visual_mode ){
+						register_code( KC_LSFT );
+					}
 					register_code( KC_DOWN );
 				}
 			}else{
-				unregister_code( KC_DOWN );
+				clear_keyboard();
+				//unregister_code( KC_DOWN );
 			}
 			return false;
 		case VIM_K:
@@ -345,10 +389,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					SEND_STRING( SS_TAP( X_END )SS_LSFT( SS_TAP( X_UP )SS_TAP( X_HOME ))SS_TAP( X_DEL ));
 					del_mode = false;
 				}else{
+					if( visual_mode ){
+						register_code( KC_LSFT );
+					}
 					register_code( KC_UP );
 				}
 			}else{
-				unregister_code( KC_UP );
+				clear_keyboard();
+				//unregister_code( KC_UP );
 			}
 			return false;
 		case VIM_L:
@@ -364,13 +412,25 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					SEND_STRING( SS_TAP( X_DEL ));
 					del_mode = false;
 				}else{
+					if( visual_mode ){
+						register_code( KC_LSFT );
+					}
 					register_code( KC_RGHT );
 				}
 			}else{
-				unregister_code( KC_RGHT );
+				clear_keyboard();
+				//unregister_code( KC_RGHT );
 			}
 			return false;
 		case VIM_M:
+			if( record->event.pressed ){
+				// m: Mark curent line... Unimplemented
+				// M: Move to middle of screen... Unimplemented
+				if( vim_control ){
+					// C-m: Move to first non-whitespace of next line, CR in insert mode
+					SEND_STRING( SS_TAP( X_DOWN )SS_TAP( X_HOME ));
+				}
+			}
 			return false;
 		case VIM_N:
 			return false;
@@ -385,6 +445,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 				if( vim_control ){
 					// C-r: Redo... or at least make an attempt at it
 					SEND_STRING( SS_LCTL( SS_TAP( X_Y )));
+				}else if( vim_shift ){
+					// R: Replace mode... not sure this is getting implemented.
 				}else{
 					// r: Replace single character... not sure this is getting implemented, though.
 				}
@@ -413,8 +475,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 		*/
 		case VIM_U:
 			if( record->event.pressed ){
+				if( vim_control ){
+					// C-u: page up
+					SEND_STRING( SS_TAP( X_PGUP ));
+				}else{
 				// u: Undo
 				SEND_STRING( SS_LCTL( SS_TAP( X_Z )));
+				}
 			}
 			return false;
 		case VIM_V:
@@ -434,9 +501,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 		case VIM_W:
 			if( record->event.pressed ){
 				if( del_mode ){
+					// D-w: delete word
 					SEND_STRING( SS_LSFT( SS_TAP( X_RGHT ))SS_TAP( X_DEL ));
 					del_mode = false;
 				}else if( change_mode ){
+					// Ch-W: Delete word and insers
 					SEND_STRING( SS_LSFT( SS_TAP( X_RGHT ))SS_TAP( X_DEL ));
 					layer_clear();
 					layer_on( _BAS );
@@ -451,8 +520,31 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 			}
 			return false;
 		case VIM_X:
+			if( record->event.pressed ){
+				if( vim_shift ){
+					// X: Delete previous character
+					register_code( X_BSPC );
+				}else{
+					// x: Delete single character
+					// Same for visual mode
+					register_code( X_DEL );
+				}
+			}else{
+				clear_keyboard();
+			}
 			return false;
 		case VIM_Y:
+			if( record->event.pressed ){
+				if( yank_mode || vim_shift ){
+					// Y, yy: Yank entire line
+					yank_mode = false;
+				}else{
+					yank_mode = true;
+					// y: Yank command
+				}
+			}else{
+			}
+				// C-y: Scroll text up, not implemented, not really supportable through key commands
 			return false;
 		/* Unimplemented
 		case VIM_Z:
@@ -488,9 +580,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   [_FN1] = LAYOUT_eighty_m80h(
     KC_ESC,  _______, _______,   _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,            KC_PSCR, KC_SLCK, KC_PAUS,
     _______, _______, _______,   _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,                     _______, _______, _______,
-    _______, _______, _______,   _______, _______, _______, _______, MC_DLNE, _______, _______, _______, _______, _______, _______,            _______, _______, _______,
+    _______, _______, MC_DWRD,   _______, _______, _______, _______, MC_DLNE, _______, _______, _______, _______, _______, _______,            _______, _______, _______,
     KC_CAPS, _______, LSA(KC_Y), _______, _______, _______, KC_LEFT, KC_DOWN, KC_UP,   KC_RGHT, _______, _______, _______,
-    MO(_FN2),_______, _______,   _______, _______, _______, KC_HOME, KC_END,  _______, _______, _______, _______,                                       _______,
+    MO(_FN2),_______, _______,   _______, _______, _______, _______, KC_ENT,  KC_HOME, KC_END,  _______, _______,                                       _______,
     _______, _______, _______,                     _______,                   _______, _______, _______, _______,                              _______, _______, _______),
 
 /* Function layer two, rarer functions
@@ -508,7 +600,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  * Base level VIM mode, all the usual goodness
  */
   [_VIM1] = LAYOUT_eighty_m80h(
-    TO(_BAS),XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,            KC_PSCR, KC_SLCK, KC_PAUS,
+    MC_VMESC,XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,            KC_PSCR, KC_SLCK, KC_PAUS,
     XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                     KC_INS,  KC_HOME, KC_PGUP,
     XXXXXXX, VIM_Q,   VIM_W,   VIM_E,   VIM_R,   XXXXXXX, VIM_Y,   VIM_U,   VIM_I,   VIM_O,   VIM_P,   XXXXXXX, XXXXXXX, XXXXXXX,            KC_DEL,  KC_END,  KC_PGDN,
     V_CTRL,  VIM_A,   VIM_S,   VIM_D,   VIM_F,   VIM_G,   VIM_H,   VIM_J,   VIM_K,   VIM_L,   XXXXXXX, XXXXXXX, XXXXXXX,
