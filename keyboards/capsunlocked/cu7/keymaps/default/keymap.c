@@ -1,6 +1,5 @@
 /*
-Copyright 2019 @foostan
-Copyright 2020 Drashna Jaelre <@drashna>
+Copyright 2021 CapsUnlocked
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,26 +14,29 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include QMK_KEYBOARD_H
 
-#pragma once
+const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
+  [0] = LAYOUT(
+             MO(1),
+    KC_1,    KC_2,    KC_3,
+    KC_4,    KC_5,    KC_6
+  ),
+  [1] = LAYOUT(
+             _______,
+    RGB_MOD, KC_UP,   RESET,
+    KC_LEFT, KC_DOWN, KC_RGHT
+  ),
+};
 
-/* Select hand configuration */
+// Volume up/down on the encoder
+bool encoder_update_user(uint8_t index, bool clockwise) {
+  if (clockwise) {
+    tap_code_delay(KC_VOLU, 10);
+  }
+  else {
+    tap_code_delay(KC_VOLD, 10);
+  }
 
-#define MASTER_LEFT
-// #define MASTER_RIGHT
-// #define EE_HANDS
-
-#ifdef RGBLIGHT_ENABLE
-#    undef RGBLED_NUM
-#    define RGBLIGHT_ANIMATIONS
-#    define RGBLED_NUM 54
-#    undef RGBLED_SPLIT
-#    define RGBLED_SPLIT \
-        { 27, 27 }
-#    define RGBLIGHT_LIMIT_VAL 120
-#    define RGBLIGHT_HUE_STEP  10
-#    define RGBLIGHT_SAT_STEP  17
-#    define RGBLIGHT_VAL_STEP  17
-#endif
-
-#define OLED_FONT_H "keyboards/crkbd/lib/glcdfont.c"
+  return true;
+}
