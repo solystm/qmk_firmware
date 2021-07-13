@@ -46,6 +46,7 @@ enum{
 	       // D: Delete to end of line
 	       // C-d: Page down
 	VIM_E, // e: End of word
+	       // E: Custom: Move to end of line
 	       // C-e: Scroll text down... not implemented, not really supportable through key commands
 	VIM_F, // f: Find character after cursor... may not implement this
 	       // F: Find backwards... may not implement this
@@ -56,7 +57,8 @@ enum{
 	       // GG: move to end of document
 	       // C-g: Show status, cannot implement
 	VIM_H, // h: Move left
-	       // H: Move to top line of screen (maybe page up)
+	       // H: Official: Move to top line of screen (maybe page up)
+	       //    Custom: Move to start of line (home)
 	       // C-h: Backspace
 	VIM_I, // i: Insert before current character
 	       // I: Insert at start of row
@@ -113,6 +115,7 @@ enum{
 };
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 	static bool nasty_hacks = true; // Enable some more optimistic behavior
+	static bool custom_behavior = true; // Enable some non-standard behavior
 	static uint16_t vim_esc_keypress;
 	static bool change_mode; // Used with the "c" key
 	static bool del_mode; // Used with the "d" key
@@ -162,7 +165,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 				clear_keyboard();
 			}
 			return false;
-		case MC_DWRD: // Delete word (emulating VIM C-w)
+		case MC_DWRD: // Delete word (emulating terminal C-w)
 			if( record->event.pressed ){
 				SEND_STRING( SS_LSFT( SS_TAP( X_RGHT ))SS_TAP( X_DEL ));
 			}
@@ -186,7 +189,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 				vim_control = false;
 			}
 			return false;
-		case VIM_A:
+		case VIM_A: // Complete
 			if( record->event.pressed ){
 				if( vim_shift ){
 					// A: Insert at end of line
@@ -281,10 +284,23 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					// C-e: Scroll down... not implemented
 				}else{
 					if( del_mode ){
-						SEND_STRING( SS_LSFT( SS_TAP( X_RGHT ))SS_TAP( X_DEL ));
+						if( custom_behavior && vim_shift ){
+							// Cut to end of line
+							SEND_STRING( SS_LSFT( SS_TAP( X_END ))SS_TAP( X_DEL ));
+						}else{
+							// Cut to end of word
+							SEND_STRING( SS_LSFT( SS_LCTL( SS_TAP( X_RGHT )))SS_TAP( X_DEL ));
+						}
 						del_mode = false;
 					}else if( change_mode ){
-						SEND_STRING( SS_LSFT( SS_TAP( X_RGHT ))SS_TAP( X_DEL ));
+						if( custom_behavior && vim_shift ){
+							// Delete to end of line
+							SEND_STRING( SS_LSFT( SS_TAP( X_END ))SS_TAP( X_DEL ));
+						}else{
+							// Delete to end of word
+							SEND_STRING( SS_LSFT( SS_LCTL( SS_TAP( X_RGHT )))SS_TAP( X_DEL ));
+						}
+						// Enter insertion mode
 						layer_clear();
 						layer_on( _BAS );
 						change_mode = false;
@@ -292,9 +308,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 						if( visual_mode ){
 							register_code( KC_LSFT );
 						}
-						// e: Forward a word
-						register_code( KC_LCTL );
-						register_code( KC_RGHT );
+						if( custom_behavior && vim_shift ){
+							// E: Forward to end of line
+							SEND_STRING( SS_TAP( X_END ));
+						}else{
+							// e: Forward a word
+							register_code( KC_LCTL );
+							register_code( KC_RGHT );
+						}
 					}
 				}
 			}else{
@@ -325,15 +346,27 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 		case VIM_H:
 			if( record->event.pressed ){
 				if( change_mode ){
-					// Delete one character to the left, then insert 
-					SEND_STRING( SS_TAP( X_BSPC ));
+					if( vim_shift && custom_behavior ){
+						// Delete to start of line, then insert
+						SEND_STRING( SS_TAP( X_HOME )SS_TAP( X_BSPC ));
+					}else{
+						// Delete one character to the left, then insert 
+						SEND_STRING( SS_TAP( X_BSPC ));
+					}
 					layer_clear();
 					layer_on( _BAS );
 					change_mode = false;
 				}else if( del_mode ){
-					// Delete one character to the left
-					SEND_STRING( SS_TAP( X_BSPC ));
+					if( vim_shift && custom_behavior ){
+						// Cut to start of line
+						SEND_STRING( SS_TAP( X_HOME )SS_TAP( X_BSPC ));
+					}else{
+						// Cut one character to the left
+						SEND_STRING( SS_TAP( X_BSPC ));
+					}
 					del_mode = false;
+				}else if( vim_shift ){
+					SEND_STRING( SS_TAP( X_HOME ));
 				}else{
 					if( visual_mode ){
 						register_code( KC_LSFT );
