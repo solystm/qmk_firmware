@@ -15,8 +15,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include QMK_KEYBOARD_H
+
 enum layer_names {
-    _BAS,
+    _BASE,
     _FN1,
     _FN2,
     _VIM1,
@@ -30,6 +31,8 @@ enum{
 	MC_VMESC, // Escape key to leave VIM mode
 	MC_DLNE,
 	MC_DWRD,
+	MC_LSFT, // Left shift handling
+	MC_LCTL, // Left control handling
 	/* VIM keybindings
 	 * All the rest of the key bindings deal with VIM mode.
 	 */
@@ -116,6 +119,8 @@ enum{
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 	static bool nasty_hacks = true; // Enable some more optimistic behavior
 	static bool custom_behavior = true; // Enable some non-standard behavior
+	static bool shift_pressed; // Left shift tracking
+	static bool control_pressed; // Left control tracking
 	static uint16_t vim_esc_keypress;
 	static bool change_mode; // Used with the "c" key
 	static bool del_mode; // Used with the "d" key
@@ -160,7 +165,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 				}else{
 					// Nothing else going on, go back to normal mode.
 					layer_clear();
-					layer_on( _BAS );
+					layer_on( _BASE );
 				}
 				clear_keyboard();
 			}
@@ -170,11 +175,47 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 				SEND_STRING( SS_LSFT( SS_TAP( X_RGHT ))SS_TAP( X_DEL ));
 			}
 			return false;
-			/* VIM MODE
-			 * Below this is the VIM input handling code.
-			 * It's kinda taking over some of the keyboard input/layer handling, so it's a little complicated.
-			 * I'd like to refactor this to use functions and stuff but uh... not sure how best to do that in the QMK framework.
-			 */
+		case MC_LSFT: // Enable shift. If LCTL is also pressed, swap to layer _FN2
+			if( record->event.pressed ){
+				shift_pressed = true;
+				if( control_pressed ){
+					layer_off( _FN1 );
+					layer_on( _FN2 );
+				}else{
+					register_code( KC_LSFT );
+				}
+			}else{
+				shift_pressed = false;
+				unregister_code( KC_LSFT );
+				layer_off( _FN2 );
+				if( control_presed ){
+					layer_on( _FN1 );
+				}
+			}
+			return false;
+		case MC_LCTL: // Swap to layer _FN1. If shift is also pressed, swap to layer _FN2
+			if( record->event.pressed ){
+				control_pressed = true;
+				if( shift_pressed ){
+					layer_on( _FN2 );
+					layer_off( _FN1 );
+				}else{
+					layer_on( _FN1 );
+				}
+			}else{
+				control_pressed = false;
+				if( shift_pressed ){
+					register_code( KC_LSFT );
+				}
+				layer_off( _FN1 );
+				layer_off( _FN2 );
+			}
+			return false;
+		/* VIM MODE
+		 * Below this is the VIM input handling code.
+		 * It's kinda taking over some of the keyboard input/layer handling, so it's a little complicated.
+		 * I'd like to refactor this to use functions and stuff but uh... not sure how best to do that in the QMK framework.
+		 */
 		case V_SHFT: // Shift key pressed...
 			if( record->event.pressed ){
 				vim_shift = true;
@@ -195,12 +236,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					// A: Insert at end of line
 					SEND_STRING( SS_TAP( X_END ));
 					layer_clear();
-					layer_on( _BAS );
+					layer_on( _BASE );
 				}else{
 					// a: Insert after character
 					SEND_STRING( SS_TAP( X_RGHT ));
 					layer_clear();
-					layer_on( _BAS );
+					layer_on( _BASE );
 				}
 			}
 			return false;
@@ -216,7 +257,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					}else if( change_mode ){
 						SEND_STRING( SS_LSFT( SS_TAP( X_LEFT ))SS_TAP( X_DEL ));
 						layer_clear();
-						layer_on( _BAS );
+						layer_on( _BASE );
 						change_mode = false;
 					}else if( visual_mode ){
 						register_code( KC_LCTL );
@@ -238,12 +279,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					// C: Change to end of line
 					SEND_STRING( SS_LSFT( SS_TAP( X_END ))SS_TAP( X_DEL ));
 					layer_clear();
-					layer_on( _BAS );
+					layer_on( _BASE );
 				}else if( visual_mode ){
 					// V-c: Delete and enter insert
 					SEND_STRING( SS_TAP( X_DEL ));
 					layer_clear();
-					layer_on( _BAS );
+					layer_on( _BASE );
 					visual_mode = false;
 				}else{
 					// c: Enter change command
@@ -302,7 +343,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 						}
 						// Enter insertion mode
 						layer_clear();
-						layer_on( _BAS );
+						layer_on( _BASE );
 						change_mode = false;
 					}else{
 						if( visual_mode ){
@@ -354,7 +395,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 						SEND_STRING( SS_TAP( X_BSPC ));
 					}
 					layer_clear();
-					layer_on( _BAS );
+					layer_on( _BASE );
 					change_mode = false;
 				}else if( del_mode ){
 					if( vim_shift && custom_behavior ){
@@ -384,11 +425,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					// I: Insert at start of line
 					SEND_STRING( SS_TAP( X_HOME ));
 					layer_clear();
-					layer_on( _BAS );
+					layer_on( _BASE );
 				}else{
 					// i: Insert at character
 					layer_clear();
-					layer_on( _BAS );
+					layer_on( _BASE );
 				}
 			}
 			return false;
@@ -398,7 +439,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					// Delete current line and the next, then insert 
 					SEND_STRING( SS_TAP( X_HOME )SS_LSFT( SS_TAP( X_DOWN )SS_TAP( X_END ))SS_TAP( X_DEL ));
 					layer_clear();
-					layer_on( _BAS );
+					layer_on( _BASE );
 					change_mode = false;
 				}else if( del_mode ){
 					// Delete current line and the next
@@ -421,7 +462,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					// Delete current line and the previous, then insert
 					SEND_STRING( SS_TAP( X_END )SS_LSFT( SS_TAP( X_UP )SS_TAP( X_HOME ))SS_TAP( X_DEL ));
 					layer_clear();
-					layer_on( _BAS );
+					layer_on( _BASE );
 					change_mode = false;
 				}else if( del_mode ){
 					// Delete current line and the previous
@@ -444,7 +485,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					// Delete one character to the right, then insert 
 					SEND_STRING( SS_TAP( X_DEL ));
 					layer_clear();
-					layer_on( _BAS );
+					layer_on( _BASE );
 					change_mode = false;
 				}else if( del_mode ){
 					// Delete one character to the right
@@ -499,12 +540,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					// S: Substitute entire line
 					SEND_STRING( SS_TAP( X_HOME )SS_DOWN( X_LSFT )SS_TAP( X_END )SS_UP( X_LSFT )SS_TAP( X_DEL ));
 					layer_clear();
-					layer_on( _BAS );
+					layer_on( _BASE );
 				}else{
 					// s: Substitute single character
 					SEND_STRING( SS_TAP( X_DEL ));
 					layer_clear();
-					layer_on( _BAS );
+					layer_on( _BASE );
 				}
 			}
 			return false;
@@ -556,7 +597,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					// Ch-W: Delete word and insers
 					SEND_STRING( SS_LSFT( SS_TAP( X_RGHT ))SS_TAP( X_DEL ));
 					layer_clear();
-					layer_on( _BAS );
+					layer_on( _BASE );
 					change_mode = false;
 				}else{
 					// w: Forward a word
@@ -616,23 +657,24 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  * Notes: Basically a standard layout, but with some additional mode swaps: escape sends to "VIM mode", left control sends to FN1, and caps is control.
  * LT( _VIM1, KC_ESC) -- tap for escape, but hold to go into VIM mode. Should make that easier to get into.
  */
-  [_BAS] = LAYOUT_eighty_m80h(
+  [_BASE] = LAYOUT_eighty_m80h(
     MC_VMES, KC_F1,   KC_F2,   KC_F3,   KC_F4,   KC_F5,   KC_F6,   KC_F7,   KC_F8,   KC_F9,   KC_F10,   KC_F11,     KC_F12,     KC_BSPC,    KC_MUTE, KC_VOLD, KC_VOLU,
     KC_GRV,  KC_1,    KC_2,    KC_3,    KC_4,    KC_5,    KC_6,    KC_7,    KC_8,    KC_9,    KC_0,     KC_MINS,    KC_EQL,                 KC_INS,  KC_HOME, KC_PGUP,
     KC_TAB,  KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,    KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,     KC_LBRC,    KC_RBRC,    KC_BSLS,    KC_DEL,  KC_END,  KC_PGDN,
     KC_LCTL, KC_A,    KC_S,    KC_D,    KC_F,    KC_G,    KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN,  KC_QUOT,    KC_ENT,
-    KC_LSFT, KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,    KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH,              KC_RSFT,                         KC_UP,
-    MO(_FN1),KC_LGUI, KC_LALT,                   KC_SPC,                                      KC_RALT,  KC_RGUI,    MO(_FN1),   KC_RCTL,    KC_LEFT, KC_DOWN, KC_RGHT),
+    MC_LSFT, KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,    KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH,              KC_RSFT,                         KC_UP,
+    MC_LCTL, KC_LGUI, KC_LALT,                   KC_SPC,                                      KC_RALT,  KC_RGUI,    MO(_FN1),   KC_RCTL,    KC_LEFT, KC_DOWN, KC_RGHT),
 
 /* Function layer one, basic functions
  * We have our Escape key in here instead of reset.
+ * Reset is also on backslash for safety purposes...
  */
   [_FN1] = LAYOUT_eighty_m80h(
     KC_ESC,  _______, _______,   _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,            KC_PSCR, KC_SLCK, KC_PAUS,
     _______, _______, _______,   _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,                     _______, _______, _______,
-    _______, _______, MC_DWRD,   _______, _______, _______, _______, MC_DLNE, _______, _______, _______, _______, _______, _______,            _______, _______, _______,
+    _______, _______, MC_DWRD,   _______, _______, _______, _______, MC_DLNE, _______, _______, _______, _______, _______, RESET,              _______, _______, _______,
     KC_CAPS, _______, LSA(KC_Y), _______, _______, _______, KC_LEFT, KC_DOWN, KC_UP,   KC_RGHT, _______, _______, _______,
-    MO(_FN2),_______, _______,   _______, _______, _______, _______, KC_ENT,  KC_HOME, KC_END,  _______, _______,                                       _______,
+    _______, _______, _______,   _______, _______, _______, _______, KC_ENT,  KC_HOME, KC_END,  _______, _______,                                       _______,
     _______, _______, _______,                     _______,                   _______, _______, _______, _______,                              _______, _______, _______),
 
 /* Function layer two, rarer functions
