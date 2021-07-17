@@ -592,8 +592,16 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 			}
 			return false;
 		case VIM_P:
+			// p: Paste
+			// P: Paste before cursor, not sure how to really implement this...
+			// C-p: Move up one line
+
 			return false;
 		case VIM_Q:
+			// q: unbound
+			// Q: Leave visual mode and enter ex mode... may not implement
+			// C-q: XON
+
 			return false;
 		case VIM_R:
 			if( record->event.pressed ){
