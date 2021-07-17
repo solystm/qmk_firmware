@@ -22,6 +22,7 @@ BACKLIGHT_ENABLE = no      # Enable keyboard backlight functionality
 RGBLIGHT_ENABLE = no        # Enable keyboard RGB underglow
 BLUETOOTH_ENABLE = no       # Enable Bluetooth
 AUDIO_ENABLE = no           # Audio output
+# TAP_DANCE_ENABLE = yes # https://docs.qmk.fm/#/feature_tap_dance
 
 # Enter lower-power sleep mode when on the ChibiOS idle thread
 OPT_DEFS += -DCORTEX_ENABLE_WFI_IDLE=TRUE

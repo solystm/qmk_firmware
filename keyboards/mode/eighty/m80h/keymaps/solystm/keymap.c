@@ -32,7 +32,7 @@ enum{
 	MC_DLNE,
 	MC_DWRD,
 	MC_LSFT, // Left shift handling
-	MC_LCTL, // Left control handling
+	MC_MODE, // Left control/function key handling
 	/* VIM keybindings
 	 * All the rest of the key bindings deal with VIM mode.
 	 */
@@ -79,7 +79,7 @@ enum{
 	       // M: Move to middle of screen... may not implement this
 	       // C-m: Move to first non-whitespace of next line, CR in insert mode
 	VIM_N, // n: Repeat last search
-	       // N: Repeat last search but in opposite direction... may not implement
+	       // N: Repeat last search but in opposite direction... won't work everywhere
 	       // C-n: Move down one line
 	VIM_O, // o: Open line below and enter insert
 	       // O: Open line above and enter insert
@@ -120,14 +120,18 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 	static bool nasty_hacks = true; // Enable some more optimistic behavior
 	static bool custom_behavior = true; // Enable some non-standard behavior
 	static bool shift_pressed; // Left shift tracking
-	static bool control_pressed; // Left control tracking
+	static bool mode_pressed; // Left control tracking
 	static uint16_t vim_esc_keypress;
 	static bool change_mode; // Used with the "c" key
 	static bool del_mode; // Used with the "d" key
 	static bool visual_mode; // While in visual mode
 	static bool yank_mode; // Used with "y" key
+	static bool g_mode; // First g pressed, if "g" again then go to start of document.
 	static bool vim_shift; // Shift key while in VIM mode
 	static bool vim_control; // Control key while in VIM mode
+	if( keycode != VIM_G ){
+		g_mode = false;
+	}
 	switch( keycode ){
 		case MC_DLNE: // Delete an entire line
 			if( record->event.pressed ){
@@ -178,7 +182,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 		case MC_LSFT: // Enable shift. If LCTL is also pressed, swap to layer _FN2
 			if( record->event.pressed ){
 				shift_pressed = true;
-				if( control_pressed ){
+				if( mode_pressed ){
 					layer_off( _FN1 );
 					layer_on( _FN2 );
 				}else{
@@ -188,22 +192,23 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 				shift_pressed = false;
 				unregister_code( KC_LSFT );
 				layer_off( _FN2 );
-				if( control_presed ){
+				if( mode_pressed ){
 					layer_on( _FN1 );
 				}
 			}
 			return false;
-		case MC_LCTL: // Swap to layer _FN1. If shift is also pressed, swap to layer _FN2
+		case MC_MODE: // Swap to layer _FN1. If shift is also pressed, swap to layer _FN2
 			if( record->event.pressed ){
-				control_pressed = true;
+				mode_pressed = true;
 				if( shift_pressed ){
+					unregister_code( KC_LSFT );
 					layer_on( _FN2 );
 					layer_off( _FN1 );
 				}else{
 					layer_on( _FN1 );
 				}
 			}else{
-				control_pressed = false;
+				mode_pressed = false;
 				if( shift_pressed ){
 					register_code( KC_LSFT );
 				}
@@ -365,11 +370,17 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 			return false;
 		case VIM_F:
 			// f: Find character after cursor... may not implement this
+			// C-f: Page down
 			// F: Find backwards... may not implement this
 			if( record->event.pressed ){
 				if( vim_control ){
 					// C-f: Page down
 					register_code( KC_PGDN );
+				//}else if( vim_shift ){
+					// F: Find backwards???
+				}else{
+					// Find mode
+					SEND_STRING( SS_TAP( X_FIND ));
 				}
 			}else{
 				clear_keyboard();
@@ -378,11 +389,42 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 			return false;
 		case VIM_G:
 			// g: unbound
-			// G: Go to line number... may not implement this, but theoretically i should be able to?
-			// move to start of document
-			// GG: move to end of document
+			// G: move to end of document
+			// G: Go to line number in multiplier mode... may not implement this, but theoretically i should be able to?
+			// gg: move to start of document
 			// C-g: Show status, cannot implement
+			if( record->event.pressed ){
+				if( g_mode ){
+					// gg: go to top of page
+					SEND_STRING( SS_LCTL( SS_TAP( X_HOME )));
+					g_mode = false;
+				}else if( vim_shift ){
+					// G: go to bottom of page
+					if( g_mode ){
+						// gG: Do nothing (Yes this is real VIM behavior!)
+						g_mode = false;
+					}else{
+						SEND_STRING( SS_LCTL( SS_TAP( X_END )));
+					}
+				/* Okay so this section TECHNICALLY works... if you're in VIM or something else that instantly goes to top of screen.
+				 * In Google Docs, it does not go to the top of the screen instantly.
+				 * For that reason, without a "wait" defined it will go up a bunch, then back down... slowly closing in on the desired behavior,
+				 * but if you're at the bottom of a long document you won't get there for a while.
+				 * Implement this with a wait using: https://beta.docs.qmk.fm/using-qmk/advanced-keycodes/feature_macros
+				 */
+				 /* }else if( vim_control ){
+					// Test behavior: do 50G
+					SEND_STRING( SS_LCTL( SS_TAP( X_HOME )));
+					int repeat_number;
 
+					for( repeat_number = 50; repeat_number > 0; --repeat_number ){
+						SEND_STRING( SS_TAP( X_DOWN ));
+					}*/
+				}else{
+					// g: do nothing, but enable g_mode for the double tap.
+					g_mode = true;
+				}
+			}
 			return false;
 		case VIM_H:
 			if( record->event.pressed ){
@@ -513,8 +555,41 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 			}
 			return false;
 		case VIM_N:
+			// Does stuff in searches, but we're implementing:
+			if( record->event.pressed ){
+				if( vim_control ){
+					// C-n: Move down one line
+					register_code( KC_DOWN );
+				}else if( vim_shift ){
+					// Search backwards
+					register_code( KC_LSFT );
+					register_code( KC_LCTL );
+					register_code( KC_G );
+					// SEND_STRING( SS_LCTL( SS_LSFT( "g" )));
+				}else{
+					// Search next
+					register_code( KC_LCTL );
+					register_code( KC_G );
+					//SEND_STRING( SS_LCTL( "g" ));
+				}
+			}else{
+				clear_keyboard();
+			}
 			return false;
 		case VIM_O:
+			if( record->event.pressed ){
+
+				if( vim_shift ){
+					// O: Open line above and enter insert
+					SEND_STRING( SS_TAP( X_UP )SS_TAP( X_END )SS_TAP( X_ENTER ));
+				}else{
+					// o: Open line below and enter insert
+					SEND_STRING( SS_TAP( X_END )SS_TAP( X_ENTER ));
+				}
+				// In both cases, return to insert mode...
+				layer_clear();
+				layer_on( _BASE );
+			}
 			return false;
 		case VIM_P:
 			return false;
@@ -656,14 +731,15 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 /* Base layer, controls normal functions
  * Notes: Basically a standard layout, but with some additional mode swaps: escape sends to "VIM mode", left control sends to FN1, and caps is control.
  * LT( _VIM1, KC_ESC) -- tap for escape, but hold to go into VIM mode. Should make that easier to get into.
+ * Configured for tsangan layout: alt, fn, ctl
  */
   [_BASE] = LAYOUT_eighty_m80h(
-    MC_VMES, KC_F1,   KC_F2,   KC_F3,   KC_F4,   KC_F5,   KC_F6,   KC_F7,   KC_F8,   KC_F9,   KC_F10,   KC_F11,     KC_F12,     KC_BSPC,    KC_MUTE, KC_VOLD, KC_VOLU,
-    KC_GRV,  KC_1,    KC_2,    KC_3,    KC_4,    KC_5,    KC_6,    KC_7,    KC_8,    KC_9,    KC_0,     KC_MINS,    KC_EQL,                 KC_INS,  KC_HOME, KC_PGUP,
-    KC_TAB,  KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,    KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,     KC_LBRC,    KC_RBRC,    KC_BSLS,    KC_DEL,  KC_END,  KC_PGDN,
+    MC_VMES, KC_F1,   KC_F2,   KC_F3,   KC_F4,   KC_F5,   KC_F6,   KC_F7,   KC_F8,   KC_F9,   KC_F10,   KC_F11,     KC_F12,  KC_BSPC,        KC_MUTE, KC_VOLD, KC_VOLU,
+    KC_GRV,  KC_1,    KC_2,    KC_3,    KC_4,    KC_5,    KC_6,    KC_7,    KC_8,    KC_9,    KC_0,     KC_MINS,    KC_EQL,                  KC_INS,  KC_HOME, KC_PGUP,
+    KC_TAB,  KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,    KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,     KC_LBRC,    KC_RBRC, KC_BSLS,        KC_DEL,  KC_END,  KC_PGDN,
     KC_LCTL, KC_A,    KC_S,    KC_D,    KC_F,    KC_G,    KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN,  KC_QUOT,    KC_ENT,
-    MC_LSFT, KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,    KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH,              KC_RSFT,                         KC_UP,
-    MC_LCTL, KC_LGUI, KC_LALT,                   KC_SPC,                                      KC_RALT,  KC_RGUI,    MO(_FN1),   KC_RCTL,    KC_LEFT, KC_DOWN, KC_RGHT),
+    MC_LSFT, KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,    KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH,              KC_RSFT,                          KC_UP,
+    MC_MODE, KC_LGUI, KC_LALT,                   KC_SPC,                                      KC_RALT,  KC_RALT,    MO(1), KC_RCTL,        KC_LEFT, KC_DOWN, KC_RGHT),
 
 /* Function layer one, basic functions
  * We have our Escape key in here instead of reset.
