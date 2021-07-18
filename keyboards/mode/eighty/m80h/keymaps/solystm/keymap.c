@@ -15,6 +15,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include QMK_KEYBOARD_H
+#include <stdlib.h>
+#include <string.h>
 
 enum layer_names {
     _BASE,
@@ -113,7 +115,9 @@ enum{
 	// VIM_Z, // z: Position current line... may not implement
 	       // ZZ: Quick save and exit... may not implement
 	       // C-z: Suspend program... may not implement
-	// VIM_1, VIM_2, VIM_3, VIM_4, VIM_5, VIM_6, VIM_7, VIM_8, VIM_9, VIM_0, // Precursor/multiplier commands... may not implement
+	V_SLASH, // /: Activate search mode
+	         // ?: Search backwards
+	VIM_1, VIM_2, VIM_3, VIM_4, VIM_5, VIM_6, VIM_7, VIM_8, VIM_9, VIM_0, // Precursor/multiplier commands...
 
 };
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
@@ -129,6 +133,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 	static bool g_mode; // First g pressed, if "g" again then go to start of document.
 	static bool vim_shift; // Shift key while in VIM mode
 	static bool vim_control; // Control key while in VIM mode
+	static char vim_multiplier[10]; // The numeric multiplier for repeat commands
+	static char* number; // The number we're inputting when hitting a number key in vim mode.
 	if( keycode != VIM_G ){
 		g_mode = false;
 	}
@@ -380,7 +386,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					// F: Find backwards???
 				}else{
 					// Find mode
-					SEND_STRING( SS_TAP( X_FIND ));
+					SEND_STRING( SS_LCTL( "f" ));
 				}
 			}else{
 				clear_keyboard();
@@ -400,10 +406,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					g_mode = false;
 				}else if( vim_shift ){
 					// G: go to bottom of page
-					if( g_mode ){
+					/* Actually this section probably doesn't need to be in here, it'll get reset on the shift press.
+					 * if( g_mode ){
 						// gG: Do nothing (Yes this is real VIM behavior!)
 						g_mode = false;
-					}else{
+					}else{*/
 						SEND_STRING( SS_LCTL( SS_TAP( X_END )));
 					}
 				/* Okay so this section TECHNICALLY works... if you're in VIM or something else that instantly goes to top of screen.
@@ -424,7 +431,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					// g: do nothing, but enable g_mode for the double tap.
 					g_mode = true;
 				}
-			}
+			
 			return false;
 		case VIM_H:
 			if( record->event.pressed ){
@@ -724,6 +731,72 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 		case VIM_Z:
 			return false;
 		*/
+		case V_SLASH:
+		      if( record->event.pressed ){
+			      if( vim_shift ){
+					// ?: Search backwards
+					SEND_STRING( SS_LCTL( SS_LSFT( "g" )));
+			      }else{
+					// /: Enter search mode
+					SEND_STRING( SS_LCTL( "f" ));
+					// Now we need to go back into insert mode because... well... no way am I copying the vim behavior exactly.
+					layer_clear();
+					layer_on( _BASE );
+			      }
+		      }
+		      return false;
+		case VIM_1:
+		case VIM_2:
+		case VIM_3:
+		case VIM_4:
+		case VIM_5:
+		case VIM_6:
+		case VIM_7:
+		case VIM_8:
+		case VIM_9:
+		case VIM_0:
+			number = "0";
+			switch( keycode ){
+				case VIM_1:
+					number = "1";
+				      break;
+				case VIM_2:
+					number = "2";
+				      break;
+				case VIM_3:
+					number = "3";
+				      break;
+				case VIM_4:
+					number = "4";
+				      break;
+				case VIM_5:
+					number = "5";
+				      break;
+				case VIM_6:
+					number = "6";
+				      break;
+				case VIM_7:
+					number = "7";
+				      break;
+				case VIM_8:
+					number = "8";
+				      break;
+				case VIM_9:
+					number = "9";
+				      break;
+			}
+
+		      // If any numbers are pressed, store them.
+		      if( record->event.pressed ){
+			      if( sizeof( vim_multiplier ) > strlen( vim_multiplier +2) ){
+				      strcat( vim_multiplier, number );
+			      }else{
+				      vim_multiplier[0] = '\0';
+				      strcat( vim_multiplier, number );
+			      }
+			      SEND_STRING( vim_multiplier );
+		      }
+		      return false;
 		default:
 			return true; // Process all other keycodes normally
 	}
@@ -777,9 +850,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  */
   [_VIM1] = LAYOUT_eighty_m80h(
     MC_VMESC,XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,            KC_PSCR, KC_SLCK, KC_PAUS,
-    XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                     KC_INS,  KC_HOME, KC_PGUP,
+    XXXXXXX, VIM_1,   VIM_2,   VIM_3,   VIM_4,   VIM_5,   VIM_6,   VIM_7,   VIM_8,   VIM_9,   VIM_0,   XXXXXXX, XXXXXXX,                     KC_INS,  KC_HOME, KC_PGUP,
     XXXXXXX, VIM_Q,   VIM_W,   VIM_E,   VIM_R,   XXXXXXX, VIM_Y,   VIM_U,   VIM_I,   VIM_O,   VIM_P,   XXXXXXX, XXXXXXX, XXXXXXX,            KC_DEL,  KC_END,  KC_PGDN,
     V_CTRL,  VIM_A,   VIM_S,   VIM_D,   VIM_F,   VIM_G,   VIM_H,   VIM_J,   VIM_K,   VIM_L,   XXXXXXX, XXXXXXX, XXXXXXX,
-    V_SHFT,  XXXXXXX, VIM_X,   VIM_C,   VIM_V,   VIM_B,   VIM_N,   VIM_M,   XXXXXXX, XXXXXXX, XXXXXXX,          V_SHFT,                               KC_UP,
+    V_SHFT,  XXXXXXX, VIM_X,   VIM_C,   VIM_V,   VIM_B,   VIM_N,   VIM_M,   XXXXXXX, XXXXXXX, V_SLASH,          V_SHFT,                               KC_UP,
     XXXXXXX, XXXXXXX, XXXXXXX,                   V_SPACE,                                     XXXXXXX, XXXXXXX, XXXXXXX, V_CTRL,             KC_LEFT, KC_DOWN, KC_RGHT),
 };
