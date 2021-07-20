@@ -6,5 +6,9 @@ OR:
 
 make gmmk/pro:solystm:flash
 
+Probably now it's:
+
+make gmmk/pro/ansi:solystm:flash
+
 Should have a rotary encoder function to swap desktops, can go left or right to different workspaces...
 Also press down to play/pause?
