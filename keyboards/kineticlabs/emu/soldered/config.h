@@ -1,5 +1,5 @@
 /*
-Copyright 2020 AAClawson (AlisGraveNil)
+Copyright 2021 kb-elmo<mail@elmo.space>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,17 +20,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "config_common.h"
 
 /* USB Device descriptor parameter */
-#define VENDOR_ID       0xFEED
-#define PRODUCT_ID      0x17B9
-#define DEVICE_VER      0x0001
-#define MANUFACTURER    AlisGraveNil
-#define PRODUCT         GameBuddy
+#define VENDOR_ID    0xE015
+#define PRODUCT_ID   0xC386
+#define DEVICE_VER   0x0001
+#define MANUFACTURER Kineticlabs
+#define PRODUCT      Emu
 
 /* key matrix size */
-#define MATRIX_ROWS 5
-#define MATRIX_COLS 7
+#define MATRIX_ROWS 6
+#define MATRIX_COLS 18
 
-#define MATRIX_ROW_PINS { D1, D0, E6, B3, B2 }
-#define MATRIX_COL_PINS { F5, F6, F7, B1, C6, D7, B6 }
+/* Keyboard Matrix Assignments */
+#define MATRIX_ROW_PINS { E6, D4, B3, B1, B0, B7 }
+#define MATRIX_COL_PINS { F0, F1, F4, F5, F6, F7, C7, C6, B6, B5, B4, D7, D6, D5, D3, D2, D1, D0 }
+#define UNUSED_PINS
 
+/* COL2ROW, ROW2COL */
 #define DIODE_DIRECTION COL2ROW
+
+/* Debounce reduces chatter (unintended double-presses) - set 0 if debouncing is not needed */
+#define DEBOUNCE 5
