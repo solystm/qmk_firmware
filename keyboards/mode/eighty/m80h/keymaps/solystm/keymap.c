@@ -130,13 +130,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 	static bool del_mode; // Used with the "d" key
 	static bool visual_mode; // While in visual mode
 	static bool yank_mode; // Used with "y" key
-	static bool g_mode; // First g pressed, if "g" again then go to start of document.
+	static bool g_tapped; // First g pressed, if "g" again then go to start of document.
 	static bool vim_shift; // Shift key while in VIM mode
 	static bool vim_control; // Control key while in VIM mode
 	static char vim_multiplier[10]; // The numeric multiplier for repeat commands
 	static char* number; // The number we're inputting when hitting a number key in vim mode.
 	if( keycode != VIM_G ){
-		g_mode = false;
+		g_tapped = false;
 	}
 	switch( keycode ){
 		case MC_DLNE: // Delete an entire line
@@ -263,10 +263,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					register_code( KC_PGUP );
 				}else{
 					if( del_mode ){
-						SEND_STRING( SS_LSFT( SS_TAP( X_LEFT ))SS_TAP( X_DEL ));
+						SEND_STRING( SS_LSFT( SS_LCTL( SS_TAP( X_LEFT )))SS_TAP( X_DEL ));
 						del_mode = false;
 					}else if( change_mode ){
-						SEND_STRING( SS_LSFT( SS_TAP( X_LEFT ))SS_TAP( X_DEL ));
+						SEND_STRING( SS_LSFT( SS_LCTL( SS_TAP( X_LEFT )))SS_TAP( X_DEL ));
 						layer_clear();
 						layer_on( _BASE );
 						change_mode = false;
@@ -330,6 +330,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 				// unregister_code( KC_PGDN );
 				// unregister_code( KC_BSPC );
 			}
+			return false;
 		case VIM_E:
 			if( record->event.pressed ){
 				if( vim_control ){
@@ -400,16 +401,16 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 			// gg: move to start of document
 			// C-g: Show status, cannot implement
 			if( record->event.pressed ){
-				if( g_mode ){
+				if( g_tapped ){
 					// gg: go to top of page
 					SEND_STRING( SS_LCTL( SS_TAP( X_HOME )));
-					g_mode = false;
+					g_tapped = false;
 				}else if( vim_shift ){
 					// G: go to bottom of page
 					/* Actually this section probably doesn't need to be in here, it'll get reset on the shift press.
-					 * if( g_mode ){
+					 * if( g_tapped ){
 						// gG: Do nothing (Yes this is real VIM behavior!)
-						g_mode = false;
+						g_tapped = false;
 					}else{*/
 						SEND_STRING( SS_LCTL( SS_TAP( X_END )));
 					}
@@ -428,8 +429,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 						SEND_STRING( SS_TAP( X_DOWN ));
 					}*/
 				}else{
-					// g: do nothing, but enable g_mode for the double tap.
-					g_mode = true;
+					// g: do nothing, but enable g_tapped for the double tap.
+					g_tapped = true;
 				}
 			
 			return false;
@@ -788,6 +789,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
 		      // If any numbers are pressed, store them.
 		      if( record->event.pressed ){
+			      /* I don't actually have to do any of this length comparison.
+			       * The actual comparison should be something like "if number >= max size int".
+			       * If the number is going to break 32k or 65k unsigned, then instead
+			       * just cap the number to the maximum size of int.
+			       */
 			      if( sizeof( vim_multiplier ) > strlen( vim_multiplier +2) ){
 				      strcat( vim_multiplier, number );
 			      }else{
