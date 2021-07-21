@@ -157,6 +157,30 @@ void set_layer_color( int layer ){
 	// What to do when animations are disabled
 }
 
+void matrix_scan_user( void ){
+	// Runs constantly...
+}
+/*
 void rgb_matrix_indicators_user( void ){
 	// Set colors for layer
+	if( g_suspend_state || keyboard_config.disable_layer_led ){
+		return;
+	}
+	switch( biton32( layer_state )){
+		case _BASE:
+			set_layer_color( color_base );
+			break;
+		case _FN1:
+			set_layer_color( color_fn1 );
+			break;
+		case _FN2:
+			set_layer_color( color_fn2 );
+			break;
+		default:
+			if( rgb_matrix_get_flags() == LED_FLAG_NONE ){
+				rgb_matrix_set_color_all( 0,0,0 );
+			}
+			break;
+	}
 }
+*/
