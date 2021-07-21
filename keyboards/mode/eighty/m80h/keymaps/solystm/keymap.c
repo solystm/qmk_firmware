@@ -413,7 +413,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 						g_tapped = false;
 					}else{*/
 						SEND_STRING( SS_LCTL( SS_TAP( X_END )));
-					}
+				}else{
+					// g: do nothing, but enable g_tapped for the double tap.
+					g_tapped = true;
+				}
+			}
 				/* Okay so this section TECHNICALLY works... if you're in VIM or something else that instantly goes to top of screen.
 				 * In Google Docs, it does not go to the top of the screen instantly.
 				 * For that reason, without a "wait" defined it will go up a bunch, then back down... slowly closing in on the desired behavior,
@@ -428,11 +432,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					for( repeat_number = 50; repeat_number > 0; --repeat_number ){
 						SEND_STRING( SS_TAP( X_DOWN ));
 					}*/
-				}else{
-					// g: do nothing, but enable g_tapped for the double tap.
-					g_tapped = true;
-				}
-			
 			return false;
 		case VIM_H:
 			if( record->event.pressed ){
