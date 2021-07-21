@@ -14,7 +14,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/* https://youtu.be/x6pWqjC39_I
+ * This is the video I'm working off
+ * See that for how things should be running
+ */
+
 #include QMK_KEYBOARD_H
+#include "colors.h"
 
 enum layer_names{
     _BASE,
@@ -138,4 +144,19 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
       tap_code(KC_VOLD);
     }
     return true;
+}
+
+void keyboard_post_init_user( void ){
+	rgb_matrix_enable();
+}
+
+const uint8_t PROGMEM ledmap[][DRIVER_LED_TOTAL][3] = {
+	// RGB layout stub
+};
+void set_layer_color( int layer ){
+	// What to do when animations are disabled
+}
+
+void rgb_matrix_indicators_user( void ){
+	// Set colors for layer
 }

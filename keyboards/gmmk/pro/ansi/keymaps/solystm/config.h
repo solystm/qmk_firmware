@@ -21,3 +21,5 @@
 #define DRIVER_1_LED_TOTAL 66
 #define DRIVER_2_LED_TOTAL 32
 #define DRIVER_LED_TOTAL (DRIVER_1_LED_TOTAL + DRIVER_2_LED_TOTAL)
+
+// Should disable all the base effects if we're doing custom ones, look for "DISABLE_RGB_MATRIX_" and then some other stuff like BREATHING and DUAL_BEACON and stuff. That saves firwmare size.
