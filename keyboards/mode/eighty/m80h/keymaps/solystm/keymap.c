@@ -135,8 +135,17 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 	static bool vim_control; // Control key while in VIM mode
 	static char vim_multiplier[10]; // The numeric multiplier for repeat commands
 	static char* number; // The number we're inputting when hitting a number key in vim mode.
+	static uint16_t last_keycode;
 	if( keycode != VIM_G ){
 		g_tapped = false;
+	}
+	/* TODO:
+	 * Super hacky way to do command repeats... not sure how to get the more useful ones in here, but there must be some way... Maybe make it an array and throw commands into it? That might also let me kill the VIM_G thing above, for example.
+	 */
+	if( keycode == VIM_DOT ){
+		keycode = last_keycode;
+	}else{
+		last_keycode = keycode;
 	}
 	switch( keycode ){
 		case MC_DLNE: // Delete an entire line
