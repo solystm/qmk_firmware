@@ -22,5 +22,5 @@ BLUETOOTH_ENABLE = no       # Enable Bluetooth
 AUDIO_ENABLE = no           # Audio output
 ENCODER_ENABLE = yes
 RGB_MATRIX_ENABLE = yes # required for rgb lights
-RGBLIGHT_ENABLE = yes # required for custom rgb
+RGBLIGHT_ENABLE = no # required for custom rgb
 RGB_MATRIX_DRIVER = AW20216

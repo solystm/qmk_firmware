@@ -146,52 +146,8 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
     return true;
 }
 
-/*
-const rgblight_segment_t PROGMEM rgb_layer_base[] = RGBLIGHT_LAYER_SEGMENTS({ 9, 20, HSV_CYAN });
-const rgblight_segment_t PROGMEM rgb_layer_fn1[] = RGBLIGHT_LAYER_SEGMENTS({ 9, 20, HSV_PURPLE });
-const rgblight_segment_t PROGMEM rgb_layer_fn2[] = RGBLIGHT_LAYER_SEGMENTS({ 9, 20, HSV_GREEN });
-
-const rgblight_segment_t* const PROGMEM my_rgb_layers[] = RGBLIGHT_LAYERS_LIST(
-	rgb_layer_base,
-	rgb_layer_fn1,
-	rgb_layer_fn2
-);
-
 void keyboard_post_init_user( void ){
 	rgb_matrix_enable();
-	rgblight_layers = my_rgb_layers;
-}
-*/
-
-// Light LEDs 6 to 9 and 12 to 15 red when caps lock is active. Hard to ignore!
-const rgblight_segment_t PROGMEM my_capslock_layer[] = RGBLIGHT_LAYER_SEGMENTS(
-    {6, 4, HSV_RED},       // Light 4 LEDs, starting with LED 6
-    {12, 4, HSV_RED}       // Light 4 LEDs, starting with LED 12
-);
-// Light LEDs 9 & 10 in cyan when keyboard layer 1 is active
-const rgblight_segment_t PROGMEM my_layer1_layer[] = RGBLIGHT_LAYER_SEGMENTS(
-    {9, 2, HSV_CYAN}
-);
-// Light LEDs 11 & 12 in purple when keyboard layer 2 is active
-const rgblight_segment_t PROGMEM my_layer2_layer[] = RGBLIGHT_LAYER_SEGMENTS(
-    {11, 2, HSV_PURPLE}
-);
-// Light LEDs 13 & 14 in green when keyboard layer 3 is active
-const rgblight_segment_t PROGMEM my_layer3_layer[] = RGBLIGHT_LAYER_SEGMENTS(
-    {13, 2, HSV_GREEN}
-);
-
-// Now define the array of layers. Later layers take precedence
-const rgblight_segment_t* const PROGMEM my_rgb_layers[] = RGBLIGHT_LAYERS_LIST(
-    my_capslock_layer,
-    my_layer1_layer,    // Overrides caps lock layer
-    my_layer2_layer,    // Overrides other layers
-    my_layer3_layer     // Overrides other layers
-);
-
-void keyboard_post_init_user(void) {
-    // Enable the LED layers
-    rgblight_layers = my_rgb_layers;
 }
 
 const uint8_t PROGMEM ledmap[][DRIVER_LED_TOTAL][3] = {
