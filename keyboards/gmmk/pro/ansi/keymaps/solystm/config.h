@@ -18,6 +18,8 @@
 
 #include "config_common.h"
 
+#define RGBLIGHT_LAYERS
+#define RGBLIGHT_HUE_STEP 10 // default 10
 #define DRIVER_1_LED_TOTAL 66
 #define DRIVER_2_LED_TOTAL 32
 #define DRIVER_LED_TOTAL (DRIVER_1_LED_TOTAL + DRIVER_2_LED_TOTAL)
