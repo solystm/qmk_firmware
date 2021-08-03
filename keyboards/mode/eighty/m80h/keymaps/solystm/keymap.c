@@ -140,6 +140,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 		g_tapped = false;
 	}
 	/* TODO:
+	 * https://gist.github.com/algernon/d9d945e4747ca0b408b0a5098ece9cfb
+	 * Basic concept of how to do a macro that repeats similar to regular key press repeat. Relies on matrix_scan_user, though.
+	 */
+	/* TODO:
 	 * Super hacky way to do command repeats... not sure how to get the more useful ones in here, but there must be some way... Maybe make it an array and throw commands into it? That might also let me kill the VIM_G thing above, for example.
 	 */
 	if( keycode == VIM_DOT ){
@@ -272,14 +276,17 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 					register_code( KC_PGUP );
 				}else{
 					if( del_mode ){
+						// db: delete back a word
 						SEND_STRING( SS_LSFT( SS_LCTL( SS_TAP( X_LEFT )))SS_TAP( X_DEL ));
 						del_mode = false;
 					}else if( change_mode ){
+						// cb: delete back a word, then insert
 						SEND_STRING( SS_LSFT( SS_LCTL( SS_TAP( X_LEFT )))SS_TAP( X_DEL ));
 						layer_clear();
 						layer_on( _BASE );
 						change_mode = false;
 					}else if( visual_mode ){
+						// V-b: Select back a word
 						register_code( KC_LCTL );
 						register_code( KC_LSFT );
 						register_code( KC_LEFT );
