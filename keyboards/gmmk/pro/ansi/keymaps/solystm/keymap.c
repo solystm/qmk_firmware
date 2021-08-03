@@ -161,7 +161,8 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
 
 void keyboard_post_init_user( void ){
 	// rgb_matrix_enable(); // enable rgb lighting animations?
-	rgblight_setrgb_range( 255,255,255,0,92 );
+	// broken, for now, so commenting out:
+	// rgblight_setrgb_range( 255,255,255,0,92 );
 }
 
 const uint8_t PROGMEM ledmap[][DRIVER_LED_TOTAL][3] = {
